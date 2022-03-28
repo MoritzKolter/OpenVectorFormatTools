@@ -54,7 +54,7 @@ endif()
 add_subdirectory(reader_writer)
 
 # Example applications
-#add_subdirectory(example)
+add_subdirectory(example)
 
 # Unit test
 if (ENABLE_TESTING OR ENABLE_COVERAGE)

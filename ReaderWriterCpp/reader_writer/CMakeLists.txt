@@ -15,6 +15,14 @@ endif()
 
 set(EXPORT_HEADER_BASE_NAME ovf_reader_writer)
 
+set(PUBLIC_HEADER_LIST
+    ${CMAKE_CURRENT_SOURCE_DIR}/inc/ovf_file_reader.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/inc/ovf_file_writer.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/inc/memory_mapping_win32.h
+    ${CMAKE_CURRENT_BINARY_DIR}/${EXPORT_HEADER_BASE_NAME}_export.h
+    "${PROTO_HDRS}"
+)
+
 ### STATIC LIBRARY ###
 add_library(${OVF_READER_WRITER_LIBRARY_STATIC} STATIC)
 generate_export_header(${OVF_READER_WRITER_LIBRARY_STATIC}
@@ -55,6 +63,11 @@ target_include_directories(${OVF_READER_WRITER_LIBRARY_STATIC}
         ${CMAKE_CURRENT_BINARY_DIR}
     PRIVATE
         ${Protobuf_INCLUDE_DIRS}
+)
+
+set_target_properties(${OVF_READER_WRITER_LIBRARY_STATIC}
+    PROPERTIES
+        PUBLIC_HEADER "${PUBLIC_HEADER_LIST}"
 )
 
 target_link_libraries(${OVF_READER_WRITER_LIBRARY_STATIC}
@@ -105,12 +118,6 @@ target_include_directories(${OVF_READER_WRITER_LIBRARY_DYNAMIC}
         ${Protobuf_INCLUDE_DIRS}
 )
 
-set(PUBLIC_HEADER_LIST
-    ${CMAKE_CURRENT_SOURCE_DIR}/inc/ovf_file_reader.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/inc/ovf_file_writer.h
-    ${CMAKE_CURRENT_BINARY_DIR}/${EXPORT_HEADER_BASE_NAME}_export.h
-    "${PROTO_HDRS}"
-)
 set_target_properties(${OVF_READER_WRITER_LIBRARY_DYNAMIC}
     PROPERTIES
         PUBLIC_HEADER "${PUBLIC_HEADER_LIST}"

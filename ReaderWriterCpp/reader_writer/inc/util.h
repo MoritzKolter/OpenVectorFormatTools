@@ -106,7 +106,7 @@ inline void ReadFromLittleEndian(T& integer, uint8_t *in)
     }
     else
     {
-        memcpy((uint8_t*)(&integer), in, sizeof(integer))
+        memcpy((uint8_t*)(&integer), in, sizeof(integer));
     }
 }
 

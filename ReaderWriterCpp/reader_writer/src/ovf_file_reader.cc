@@ -4,6 +4,7 @@
 #include <algorithm>
 
 #include "google/protobuf/util/delimited_message_util.h"
+#include "google/protobuf/io/zero_copy_stream_impl_lite.h"
 
 #include "ovf_file_reader.h"
 #include "open_vector_format.pb.h"
@@ -31,51 +32,99 @@ OvfFileReader::~OvfFileReader()
 void OvfFileReader::OpenFile(const std::string path, Job& job)
 {
     path_ = path;
-
-    // memory map the file
-    mapping_ = MemoryMapping(path);
+    mapping_.emplace(path);
 
     if (mapping_->file_size() < 12)
     {
         throw std::runtime_error("File \"" + path + "\" is empty");
     }
 
-    auto header_view = mapping_->CreateView(0, kMagicBytes.size() + 8);
-    
-    if (!std::equal(kMagicBytes.begin(), kMagicBytes.end(), header_view.data()))
+    uint64_t job_lut_offset;
     {
-        throw std::runtime_error("File does not appear to be an ovf file");
+        auto header_view = mapping_->CreateView(0, kMagicBytes.size() + 8);
+        if (!std::equal(kMagicBytes.begin(), kMagicBytes.end(), header_view.data()))
+        {
+            throw std::runtime_error("File does not appear to be an ovf file");
+        }
+
+        // read job lut offset
+        util::ReadFromLittleEndian(job_lut_offset, header_view.data() + kMagicBytes.size());
     }
 
-    // read job lut offset
-    
-/*
-    auto ifs = std::ifstream{path};
-
-    uint8_t buffer[kMagicBytes.size()];
-    ifs.read((char*)buffer, kMagicBytes.size());
-    if (!std::equal(kMagicBytes.begin(), kMagicBytes.end(), buffer))
-        throw std::runtime_error("File does not appear to be an ovf file");
-
-    // read job lut offset
-    uint64_t job_lut_offset;
-    util::ReadFromLittleEndian(job_lut_offset, ifs);
-
-    ifs.close();
-*/
     // read job lut
-    // not that usage of IstreamInputStream for this is discouraged, but probably okay
-    // as we continue using the ifstream afterwards and only read one small object
     job_lut_ = JobLUT{};
-    /* util::ManagedFileInputStream pb_ifs{path};
-    pb_ifs.stream()->Skip(job_lut_offset);
+    {
+        auto job_lut_view = mapping_->CreateView(job_lut_offset, 0); // offset up until EOF
+        google::protobuf::io::ArrayInputStream zcs{job_lut_view.data(), (int)job_lut_view.size()};
+        google::protobuf::util::ParseDelimitedFromZeroCopyStream(
+            &*job_lut_,
+            &zcs,
+            nullptr
+        );
+    }
+
+    wp_luts_.resize(job_lut_->workplanepositions_size());
+
+    // read job shell
+    job.Clear();
+    {
+        auto job_shell_view = mapping_->CreateView((uint64_t)job_lut_->jobshellposition(), 0);
+        google::protobuf::io::ArrayInputStream zcs{job_shell_view.data(), (int)job_shell_view.size()};
+        google::protobuf::util::ParseDelimitedFromZeroCopyStream(
+            &job,
+            &zcs,
+            nullptr
+        );
+    }
+}
+
+void OvfFileReader::GetWorkPlane(const int i_work_plane, WorkPlane& wp)
+{
+    CheckIsFileOpened();
+    //GetWorkPlane(i_work_plane, &wp);
+}
+
+void OvfFileReader::GetWorkPlaneShell(const int i_work_plane, WorkPlane& wp)
+{
+    CheckIsFileOpened();
+    
+    uint64_t start_offset;
+    auto work_plane_view = GetWorkPlaneFileView(i_work_plane, &start_offset);
+    
+    GetWorkPlaneLut(work_plane_view.data(), work_plane_view.size(), wpl);
+    
+    // offset from start of work plane
+    auto shell_position = wpl.workplaneshellposition - start_offset;
+
+    wp.Clear();
+    google::protobuf::io::ArrayInputStream zcs{
+        work_plane_view.data() + shell_position,
+        (int)work_plane_view.size() - shell_position
+    };
     google::protobuf::util::ParseDelimitedFromZeroCopyStream(
-        &*job_lut_,
-        pb_ifs.stream(),
+        &wp,
+        &zcs,
         nullptr
-    ); */
+    );
+}
+
+void OvfFileReader::GetVectorBlock(const int i_work_plane, const int i_vector_block, VectorBlock& vb)
+{
+    CheckIsFileOpened();
+
+    // TODO
 }
 
 
+
+void OvfFileReader::GetWorkPlaneLut(const int i_work_plane, WorkPlaneLUT& wpl)
+{
+    google::protobuf::io::ArrayInputStream zcs{buffer, (int)size};
+    google::protobuf::util::ParseDelimitedFromZeroCopyStream(
+        &wpl,
+        &zcs,
+        nullptr
+    );
+}
 
 }

@@ -6,7 +6,7 @@
 
 #include <string>
 #include <stdexcept>
-#include <winbase.h>
+#include <windows.h>
 #include <fileapi.h>
 #include <sysinfoapi.h>
 
@@ -18,9 +18,10 @@ public:
     class FileView
     {
     public:
-        FileView(uint8_t *base_addr, uint8_t *start_addr)
-            : base_addr_{base_addr}, start_addr_{start_addr}
+        FileView(uint8_t *base_addr, uint8_t *start_addr, SIZE_T size_from_base_addr)
+            : base_addr_{base_addr}, start_addr_{start_addr}, size_from_base_addr_{size_from_base_addr}
         {}
+
         FileView(const FileView&) = delete;
         FileView& operator=(const FileView&) = delete;
         ~FileView()
@@ -32,9 +33,15 @@ public:
         {
             return start_addr_;
         }
+
+        size_t size()
+        {
+            return size_from_base_addr_ - ((SIZE_T)start_addr_ - (SIZE_T)base_addr_);
+        }
     private:
         uint8_t *base_addr_;
         uint8_t *start_addr_;
+        SIZE_T size_from_base_addr_;
     };
 
 
@@ -108,7 +115,14 @@ public:
             min_size == 0 ? 0 : (SIZE_T)granularized_min_size
         ));
         
-        return FileView{view, view + (offset - granularized_offset)};
+        MEMORY_BASIC_INFORMATION map_info;
+        VirtualQuery(view, &map_info, sizeof(map_info));
+
+        return FileView{
+            view,
+            view + (offset - granularized_offset),
+            map_info.RegionSize
+        };
     }
 
     uint64_t file_size() const

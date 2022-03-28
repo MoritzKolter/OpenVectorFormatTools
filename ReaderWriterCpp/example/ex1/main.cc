@@ -1,4 +1,5 @@
 #include <iostream>
+#include "ovf_reader_writer_export.h"
 #include "ovf_file_writer.h"
 #include "open_vector_format.pb.h"
 
