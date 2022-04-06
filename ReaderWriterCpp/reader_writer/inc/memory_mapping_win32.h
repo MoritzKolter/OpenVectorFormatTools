@@ -64,7 +64,7 @@ public:
          * beginning of the file as requested on creation. Guaranteed to be valid for the size
          * available in the size() accessor.
          */
-        uint8_t *data()
+        uint8_t *data() const
         {
             return start_addr_;
         }
@@ -75,7 +75,7 @@ public:
          * @return size_t The size in bytes of this mapping. This number may be higher than the requestes
          * minimum size.
          */
-        size_t size()
+        size_t size() const
         {
             return size_from_base_addr_ - ((SIZE_T)start_addr_ - (SIZE_T)base_addr_);
         }
@@ -163,7 +163,7 @@ public:
      * @return A new file view. The first byte of its data is guaranteed to be at the 
      * offset specified, and its size is at least as long as min_size.
      */
-    FileView CreateView(const size_t offset, const size_t min_size)
+    FileView CreateView(const size_t offset, const size_t min_size) const
     {
         DWORD granularity = system_info_.dwAllocationGranularity;
         SIZE_T granularized_offset = (offset / granularity) * granularity;
