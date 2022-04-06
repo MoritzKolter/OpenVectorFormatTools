@@ -41,13 +41,11 @@ private:
     std::optional<MemoryMapping> mapping_;
 
     std::optional<JobLUT> job_lut_;
-    std::optional<std::vector<uint64_t>> work_plane_lut_offsets_;
 
     uint64_t auto_cache_threshold_;
-    std::vector<WorkPlaneLut> wp_luts_;
+    std::vector<WorkPlaneLUT> wp_luts_;
 
-
-    void GetWorkPlaneLut(uint8_t *buffer, size_t size, WorkPlaneLUT& wpl);
+    inline MemoryMapping::FileView GetWorkPlaneShellImpl(const int i_work_plane, WorkPlane& wp, size_t *start_offset = nullptr, size_t *end_offset = nullptr);
 
     inline void CheckIsFileOpened()
     {
@@ -55,7 +53,7 @@ private:
             throw std::runtime_error("Can't read data without opening a file first");
     }
 
-    inline MemoryMapping::FileView GetWorkPlaneFileView(const int i_work_plane, uint64_t *start_offset = nullptr, uint64_t *end_offset = nullptr)
+    inline MemoryMapping::FileView GetWorkPlaneFileView(const int i_work_plane, size_t *start_offset = nullptr, size_t *end_offset = nullptr)
     {
         auto count_work_planes = job_lut_->workplanepositions_size();
     
