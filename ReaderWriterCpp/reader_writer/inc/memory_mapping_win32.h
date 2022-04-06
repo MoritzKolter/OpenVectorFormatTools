@@ -12,39 +12,91 @@
 
 namespace open_vector_format::reader_writer {
 
+/**
+ * @brief WIN32 specific implementation for memory mapping files.
+ * 
+ * Implements memory mapping behaviour based on direct calls to the WIN32 C API.
+ */
 class MemoryMapping
 {
 public:
+
+    /**
+     * @brief WIN32 specific implementation for a memory mapped view of a file.
+     * 
+     * Implements the view of a memory mapped file, abstracting over the WIN32 C API
+     * and page-aligning the memory map.
+     */
     class FileView
     {
     public:
-        FileView(uint8_t *base_addr, uint8_t *start_addr, SIZE_T size_from_base_addr)
+
+        /**
+         * @brief Construct a new File View object
+         * 
+         * @param base_addr The base address in memory at which the memory mapping starts.
+         * @param start_addr The address in memory at which the data actually starts. Must be greater or equal to base_addr.
+         * @param size_from_base_addr The absolute size of the complete memory mapping.
+         */
+        FileView(uint8_t *base_addr, uint8_t *start_addr, size_t size_from_base_addr)
             : base_addr_{base_addr}, start_addr_{start_addr}, size_from_base_addr_{size_from_base_addr}
         {}
 
+        // RAII and copy constructors are hard to get right.
+        // When they are not necessary, it's better to delete them.
         FileView(const FileView&) = delete;
         FileView& operator=(const FileView&) = delete;
+        
+        /**
+         * @brief Destroy the File View object
+         * 
+         * Unmaps the file view.
+         */
         ~FileView()
         {
             UnmapViewOfFile(base_addr_);
         }
 
+        /**
+         * @brief Accessor to the mapped data.
+         * 
+         * @return uint8_t* Pointer to the memory segment representing the exact offset from the
+         * beginning of the file as requested on creation. Guaranteed to be valid for the size
+         * available in the size() accessor.
+         */
         uint8_t *data()
         {
             return start_addr_;
         }
 
+        /**
+         * @brief Accessor to the size of mapped data.
+         * 
+         * @return size_t The size in bytes of this mapping. This number may be higher than the requestes
+         * minimum size.
+         */
         size_t size()
         {
             return size_from_base_addr_ - ((SIZE_T)start_addr_ - (SIZE_T)base_addr_);
         }
+
     private:
+        /** The base address in memory at which the memory mapping starts. */
         uint8_t *base_addr_;
+
+        /** The address in memory at which the data actually starts. Must be greater or equal to base_addr. */
         uint8_t *start_addr_;
+
+        /** The absolute size of the complete memory mapping. */
         SIZE_T size_from_base_addr_;
     };
 
-
+    /**
+     * @brief Construct a new Memory Mapping object
+     * 
+     * @param path A valid path to a file. The contents of this file will be mapped to memory.
+     * @throws std::runtime_error A handle to the file could not be obtained.
+     */
     MemoryMapping(const std::string path)
     {
         GetSystemInfo(&system_info_);
@@ -84,24 +136,43 @@ public:
         }
     }
 
+    // RAII and copy constructors are hard to get right.
+    // When they are not necessary, it's better to delete them.
     MemoryMapping(const MemoryMapping&) = delete;
     MemoryMapping& operator=(const MemoryMapping&) = delete;
+    
+    /**
+     * @brief Destroy the Memory Mapping object
+     * 
+     * Handles to the file mapping and file itself are closed.
+     * This does not invalidate views that are still opened, as those hold
+     * handles to the file mapping themselves.
+     */
     ~MemoryMapping()
     {
         CloseHandle(file_mapping_);
         CloseHandle(file_);
     }
 
-    FileView CreateView(const uint64_t offset, const uint64_t min_size)
+    /**
+     * @brief Create a new FileView 
+     * 
+     * @param offset The absolute offset in bytes from the beginning of the file.
+     * @param min_size The minimum size the view has to have, in bytes. When min_size
+     * is 0, the mapping extends to the end of the file.
+     * @return A new file view. The first byte of its data is guaranteed to be at the 
+     * offset specified, and its size is at least as long as min_size.
+     */
+    FileView CreateView(const size_t offset, const size_t min_size)
     {
         DWORD granularity = system_info_.dwAllocationGranularity;
-        uint64_t granularized_offset = (offset / granularity) * granularity;
+        SIZE_T granularized_offset = (offset / granularity) * granularity;
 
         DWORD offset_low = static_cast<DWORD>(granularized_offset & 0xFFFFFFFFul);
         DWORD offset_high = static_cast<DWORD>((granularized_offset >> 32) & 0xFFFFFFFFul);
 
-        uint64_t corrected_min_size = ((offset - granularized_offset) + min_size);
-        uint64_t granularized_min_size = (((corrected_min_size + 1) / granularity) * granularity);
+        SIZE_T corrected_min_size = ((offset - granularized_offset) + min_size);
+        SIZE_T granularized_min_size = (((corrected_min_size + 1) / granularity) * granularity);
         if (granularized_offset + granularized_min_size >= file_size_)
         {
             granularized_min_size = 0; // up to EOF
@@ -125,15 +196,27 @@ public:
         };
     }
 
-    uint64_t file_size() const
+    /**
+     * @brief Accessor for the size of the full file.
+     * 
+     * @return size_t The size of the full file in bytes. 
+     */
+    size_t file_size() const
     {
         return file_size_;
     }
 
 private:
+    /** WIN32 handle to the file itself. */ 
     HANDLE file_;
+
+    /** WIN32 handle to the overarching file mapping object. */
     HANDLE file_mapping_;
-    uint64_t file_size_;
+
+    /** Full file size, queried on construction. */
+    SIZE_T file_size_;
+
+    /** System info, queried on construction. Needed for memory page size, as file views must be page-aligned. */
     SYSTEM_INFO system_info_;
 };
 
