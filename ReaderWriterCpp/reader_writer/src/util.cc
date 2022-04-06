@@ -3,6 +3,13 @@
 
 namespace open_vector_format::util {
 
+/**
+ * @brief Macro to create a case statement for each primitive type to copy from source to target message.
+ * 
+ * Expands to a scoped case statement, matching on a FieldDescriptor::CPPTYPE_$TYPE. Then uses reflection
+ * to set the the value of the target at the same tag number as the given descriptor to the value found in
+ * the source message field.
+ */
 #define CASE_SET_FIELD(___source___, ___target___, ___field___, ___cpptype___, ___function_suffix___) \
         case google::protobuf::FieldDescriptor::___cpptype___: \
             { \
@@ -50,7 +57,13 @@ void CopyField(const google::protobuf::Message& source,
 
 #undef CASE_SET_FIELD
 
-
+/**
+ * @brief Macro to create a case statement for each repeated field type to copy from source to target message.
+ * 
+ * Expands to a scoped case statement, matching on a FieldDescriptor::CPPTYPE_$TYPE. Then uses reflection
+ * to add all primitive values in the repeated filed of the source message into the target message's repeated
+ * field.
+ */
 #define CASE_ADD_TO_REPEATED_FIELD(___source___, ___target___, ___field___, ___cpptype___, ___function_suffix___) \
         case google::protobuf::FieldDescriptor::___cpptype___: \
             { \
