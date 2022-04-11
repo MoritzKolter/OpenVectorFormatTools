@@ -32,7 +32,13 @@ import re
 header_path = "license_header.txt"
 
 # dictionary with file types to process and in and out markers for block comments
-file_types = {".cs": [r"/*", r"*/"], ".py": [r'"""', r'"""'], ".proto": [r"/*", r"*/"]}
+file_types = {
+    ".cxx": [r"/*", r"*/"],
+    ".h": [r"/*", r"*/"],
+    ".cs": [r"/*", r"*/"],
+    ".py": [r'"""', r'"""'],
+    ".proto": [r"/*", r"*/"],
+}
 
 # list with files / directories to ignore. please use '/' as directory seperator, will be replaced with system standard later.
 # matching is done via regex against the relative file path.
