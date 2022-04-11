@@ -58,6 +58,12 @@ void OvfFileReader::OpenFile(const std::string path, Job& job)
         // read job lut offset
         util::ReadFromLittleEndian(job_lut_offset_raw, header_view.data() + kMagicBytes.size());
     }
+    
+    if (job_lut_offset_raw < 0 || job_lut_offset_raw == kDefaultLutOffset)
+    {
+        throw std::runtime_error("binary file is not an ovf file or corrupted");
+    }
+
     size_t job_lut_offset = (size_t)job_lut_offset_raw;
 
     // read job lut
