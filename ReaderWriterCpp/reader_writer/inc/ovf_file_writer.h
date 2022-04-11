@@ -23,6 +23,8 @@ public:
 
     void WriteFullJob(const Job& job, const std::string path);
 
+    Job& job_shell();
+
 private:
     enum class FileOperationState
     {

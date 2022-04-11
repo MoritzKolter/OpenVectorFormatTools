@@ -90,6 +90,17 @@ void OvfFileWriter::WriteFullJob(const Job& job, const std::string path)
 }
 
 
+Job& OvfFileWriter::job_shell()
+{
+    if (!job_shell_.has_value())
+    {
+        throw std::runtime_error("No write operation in progress");
+    }
+    
+    return *job_shell_;
+}
+
+
 void OvfFileWriter::WriteHeader(const Job& job)
 {
     CheckIsWriting();
